@@ -21,20 +21,28 @@ export default function DashboardPage() {
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [user, setUser] = useState<{ name?: string; email?: string }>({})
   const router = useRouter()
 
+  // Solo se ejecuta en el cliente después del montaje
   useEffect(() => {
+    const storedUser = localStorage.getItem('user')
     const token = localStorage.getItem('token')
+
     if (!token) {
       router.push('/auth')
       return
     }
-    fetchProjects()
+
+    if (storedUser) {
+      setUser(JSON.parse(storedUser))
+    }
+
+    fetchProjects(token)
   }, [router])
 
-  const fetchProjects = async () => {
+  const fetchProjects = async (token: string) => {
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch('/api/projects', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -52,7 +60,7 @@ export default function DashboardPage() {
 
       const data = await response.json()
       setProjects(data)
-    } catch (error) {
+    } catch (err) {
       setError('Error al cargar proyectos')
     } finally {
       setLoading(false)
@@ -65,6 +73,8 @@ export default function DashboardPage() {
 
     try {
       const token = localStorage.getItem('token')
+      if (!token) throw new Error('No token found')
+
       const url = editingProject ? `/api/projects/${editingProject.id}` : '/api/projects'
       const method = editingProject ? 'PUT' : 'POST'
 
@@ -77,15 +87,13 @@ export default function DashboardPage() {
         body: JSON.stringify(formData)
       })
 
-      if (!response.ok) {
-        throw new Error('Error al guardar proyecto')
-      }
+      if (!response.ok) throw new Error('Error al guardar proyecto')
 
       setFormData({ name: '', description: '' })
       setShowCreateForm(false)
       setEditingProject(null)
-      fetchProjects()
-    } catch (error) {
+      fetchProjects(token)
+    } catch (err) {
       setError('Error al guardar proyecto')
     }
   }
@@ -97,12 +105,12 @@ export default function DashboardPage() {
   }
 
   const handleDelete = async (projectId: number) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar este proyecto?')) {
-      return
-    }
+    if (!confirm('¿Estás seguro de que quieres eliminar este proyecto?')) return
 
     try {
       const token = localStorage.getItem('token')
+      if (!token) throw new Error('No token found')
+
       const response = await fetch(`/api/projects/${projectId}`, {
         method: 'DELETE',
         headers: {
@@ -110,12 +118,10 @@ export default function DashboardPage() {
         }
       })
 
-      if (!response.ok) {
-        throw new Error('Error al eliminar proyecto')
-      }
+      if (!response.ok) throw new Error('Error al eliminar proyecto')
 
-      fetchProjects()
-    } catch (error) {
+      fetchProjects(token)
+    } catch (err) {
       setError('Error al eliminar proyecto')
     }
   }
@@ -125,8 +131,6 @@ export default function DashboardPage() {
     localStorage.removeItem('user')
     router.push('/auth')
   }
-
-  const user = JSON.parse(localStorage.getItem('user') || '{}')
 
   if (loading) {
     return (

@@ -4,7 +4,7 @@ import { verifyToken } from '@/lib/auth'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization')
@@ -20,7 +20,9 @@ export async function PUT(
     }
 
     const { name, description } = await request.json()
-    const projectId = parseInt(params.id)
+    const { id } = await context.params
+
+    const projectId = parseInt(id)
 
     const project = await prisma.project.findFirst({
       where: {
@@ -53,7 +55,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = request.headers.get('authorization')
@@ -68,7 +70,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 })
     }
 
-    const projectId = parseInt(params.id)
+    const { id } = await context.params
+
+    const projectId = parseInt(id)
 
     const project = await prisma.project.findFirst({
       where: {
