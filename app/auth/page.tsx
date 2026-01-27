@@ -20,7 +20,7 @@ export default function AuthPage() {
     setLoading(true)
 
     try {
-      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register'
+      const endpoint = '/api/auth/login'
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -123,18 +123,6 @@ export default function AuthPage() {
               {loading ? 'Procesando...' : (isLogin ? 'Iniciar Sesión' : 'Registrarse')}
             </button>
           </form>
-
-          <div className="mt-6 text-center">
-            <button
-              onClick={() => {
-                setIsLogin(!isLogin)
-                setError('')
-              }}
-              className="text-primary hover:underline text-sm"
-            >
-              {isLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}
-            </button>
-          </div>
         </div>
       </div>
     </div>
