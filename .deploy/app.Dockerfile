@@ -5,10 +5,12 @@ FROM node:20-alpine AS deps
 
 WORKDIR /app
 
+RUN npm install -g pnpm@10.11.1
 
-COPY package.json ./
+COPY package.json pnpm-lock.yaml ./
 
-RUN npm install
+# Forzar instalación de todas las dependencias, 
+RUN NODE_ENV=development pnpm install --frozen-lockfile
 
 # -------------------------
 # Stage 2: Builder
@@ -17,8 +19,10 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+RUN npm install -g pnpm@10.11.1
+
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json package-lock.json ./
+COPY package.json pnpm-lock.yaml ./
 
 COPY prisma ./prisma
 
@@ -26,7 +30,7 @@ RUN npx prisma generate
 
 COPY . .
 
-RUN npm build
+RUN pnpm build
 
 # -------------------------
 # Stage 3: Runner
