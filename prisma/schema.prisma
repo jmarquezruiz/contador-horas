@@ -16,6 +16,7 @@ model User {
   updatedAt DateTime      @updatedAt
   projects  Project[]
   sessions  TimeSession[]
+  notes     Note[]
 }
 
 model Project {
@@ -35,6 +36,7 @@ model TimeSession {
   id        Int       @id @default(autoincrement())
   startTime DateTime  @default(now())
   endTime   DateTime?
+  comment   String?   @db.Text
   projectId Int
   project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   userId    Int
@@ -43,5 +45,16 @@ model TimeSession {
   updatedAt DateTime  @updatedAt
 
   @@index([projectId])
+  @@index([userId])
+}
+
+model Note {
+  id        Int       @id @default(autoincrement())
+  content   String    @db.Text
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
 }

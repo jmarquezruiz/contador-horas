@@ -22,6 +22,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [user, setUser] = useState<{ name?: string; email?: string }>({})
+  const [notes, setNotes] = useState<Array<{ id: number; content: string; updatedAt: string }>>([])
+  const [newNote, setNewNote] = useState('')
+  const [showNotes, setShowNotes] = useState(false)
   const router = useRouter()
 
   // Solo se ejecuta en el cliente después del montaje
@@ -39,7 +42,28 @@ export default function DashboardPage() {
     }
 
     fetchProjects(token)
+    fetchNotes(token)
   }, [router])
+
+  const fetchNotes = async (token: string) => {
+    try {
+      const response = await fetch('/api/notes', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (!response.ok) {
+        console.error('Error al cargar notas')
+        return
+      }
+
+      const data = await response.json()
+      setNotes(data)
+    } catch (err) {
+      console.error('Error al cargar notas:', err)
+    }
+  }
 
   const fetchProjects = async (token: string) => {
     try {
@@ -126,6 +150,54 @@ export default function DashboardPage() {
     }
   }
 
+  const handleCreateNote = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (newNote.trim() === '') return
+
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) throw new Error('No token found')
+
+      const response = await fetch('/api/notes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ content: newNote.trim() })
+      })
+
+      if (!response.ok) throw new Error('Error al crear nota')
+
+      setNewNote('')
+      fetchNotes(token)
+    } catch (err) {
+      setError('Error al crear nota')
+    }
+  }
+
+  const handleDeleteNote = async (noteId: number) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta nota?')) return
+
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) throw new Error('No token found')
+
+      const response = await fetch(`/api/notes/${noteId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (!response.ok) throw new Error('Error al eliminar nota')
+
+      fetchNotes(token)
+    } catch (err) {
+      setError('Error al eliminar nota')
+    }
+  }
+
   const handleLogout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
@@ -168,16 +240,28 @@ export default function DashboardPage() {
 
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold text-foreground">Mis Proyectos</h2>
-          <button
-            onClick={() => {
-              setShowCreateForm(true)
-              setEditingProject(null)
-              setFormData({ name: '', description: '' })
-            }}
-            className="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
-          >
-            Nuevo Proyecto
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowNotes(!showNotes)}
+              className={`px-4 py-2 rounded-md transition-colors ${
+                showNotes 
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'bg-muted text-muted-foreground hover:bg-muted/90'
+              }`}
+            >
+              📝 Notas
+            </button>
+            <button
+              onClick={() => {
+                setShowCreateForm(true)
+                setEditingProject(null)
+                setFormData({ name: '', description: '' })
+              }}
+              className="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
+            >
+              Nuevo Proyecto
+            </button>
+          </div>
         </div>
 
         {showCreateForm && (
@@ -233,6 +317,59 @@ export default function DashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        )}
+
+        {showNotes && (
+          <div className="bg-card border border-border rounded-lg p-6 mb-6">
+            <h3 className="text-lg font-medium text-foreground mb-4">📝 Mis Notas</h3>
+            
+            <form onSubmit={handleCreateNote} className="mb-6">
+              <div className="flex gap-2">
+                <textarea
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                  placeholder="Añadir nueva nota..."
+                  rows={2}
+                  className="flex-1 px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                />
+                <button
+                  type="submit"
+                  disabled={newNote.trim() === ''}
+                  className="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Añadir
+                </button>
+              </div>
+            </form>
+
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              {notes.length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">No tienes notas aún</p>
+              ) : (
+                notes.map((note) => (
+                  <div key={note.id} className="bg-muted/50 rounded-lg p-3 relative group">
+                    <p className="text-sm text-foreground mb-2">{note.content}</p>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(note.updatedAt).toLocaleDateString('es', {
+                          day: 'numeric',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                      <button
+                        onClick={() => handleDeleteNote(note.id)}
+                        className="text-xs text-destructive hover:text-destructive/80 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         )}
 

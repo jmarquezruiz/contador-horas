@@ -93,7 +93,7 @@ export async function POST(
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 })
     }
 
-    const { endTime, sessionId } = await request.json()
+    const { endTime, sessionId, comment } = await request.json()
     const { id } = await context.params
     const projectId = parseInt(id)
 
@@ -130,7 +130,10 @@ export async function POST(
 
       const updatedSession = await prisma.timeSession.update({
         where: { id: sessionId },
-        data: { endTime: new Date(endTime) }
+        data: { 
+          endTime: new Date(endTime),
+          ...(comment && { comment })
+        }
       })
 
       return NextResponse.json(updatedSession)
@@ -139,7 +142,8 @@ export async function POST(
         data: {
           projectId,
           userId: decoded.userId,
-          startTime: new Date()
+          startTime: new Date(),
+          ...(comment && { comment })
         }
       })
 

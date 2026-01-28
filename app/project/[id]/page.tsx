@@ -14,6 +14,7 @@ interface TimeSession {
   id: number
   startTime: string
   endTime: string | null
+  comment: string | null
 }
 
 interface Project {
@@ -31,6 +32,8 @@ export default function ProjectDetailPage() {
   const [isTimerRunning, setIsTimerRunning] = useState(false)
   const [currentSession, setCurrentSession] = useState<TimeSession | null>(null)
   const [elapsedTime, setElapsedTime] = useState(0)
+  const [sessionComment, setSessionComment] = useState('')
+  const [showCommentInput, setShowCommentInput] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const router = useRouter()
@@ -157,7 +160,8 @@ export default function ProjectDetailPage() {
           },
           body: JSON.stringify({
             sessionId: currentSession.id,
-            endTime: new Date().toISOString()
+            endTime: new Date().toISOString(),
+            comment: sessionComment.trim() || null
           })
         })
 
@@ -168,6 +172,8 @@ export default function ProjectDetailPage() {
         setIsTimerRunning(false)
         setCurrentSession(null)
         setElapsedTime(0)
+        setSessionComment('')
+        setShowCommentInput(false)
         fetchStats()
         fetchSessions(currentPage)
       } else {
@@ -177,7 +183,9 @@ export default function ProjectDetailPage() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({})
+          body: JSON.stringify({
+            comment: sessionComment.trim() || null
+          })
         })
 
         if (!response.ok) {
@@ -188,6 +196,8 @@ export default function ProjectDetailPage() {
         setCurrentSession(newSession)
         setIsTimerRunning(true)
         setElapsedTime(0)
+        setSessionComment('')
+        setShowCommentInput(false)
       }
     } catch (error) {
       setError('Error al gestionar temporizador')
@@ -290,6 +300,29 @@ export default function ProjectDetailPage() {
                 </button>
               </div>
 
+              <div className="space-y-3 mb-6">
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-medium text-foreground">
+                    Comentario de sesión (opcional)
+                  </label>
+                  <button
+                    onClick={() => setShowCommentInput(!showCommentInput)}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    {showCommentInput ? 'Ocultar' : 'Mostrar'}
+                  </button>
+                </div>
+                {showCommentInput && (
+                  <textarea
+                    value={sessionComment}
+                    onChange={(e) => setSessionComment(e.target.value)}
+                    placeholder="Añade notas sobre esta sesión..."
+                    rows={3}
+                    className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                  />
+                )}
+              </div>
+
               {stats && (
                 <div className="space-y-3 pt-6 border-t border-border">
                   <h3 className="font-medium text-foreground">Estadísticas</h3>
@@ -327,6 +360,7 @@ export default function ProjectDetailPage() {
                           <th className="text-left py-3 px-4 text-sm font-medium text-foreground">Inicio</th>
                           <th className="text-left py-3 px-4 text-sm font-medium text-foreground">Fin</th>
                           <th className="text-left py-3 px-4 text-sm font-medium text-foreground">Duración</th>
+                          <th className="text-left py-3 px-4 text-sm font-medium text-foreground">Comentario</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -336,17 +370,26 @@ export default function ProjectDetailPage() {
                             : Date.now() - new Date(session.startTime).getTime()
                           
                           return (
-                            <tr key={session.id} className="border-b border-border">
-                              <td className="py-3 px-4 text-sm text-foreground">
-                                {formatDate(session.startTime)}
-                              </td>
-                              <td className="py-3 px-4 text-sm text-foreground">
-                                {session.endTime ? formatDate(session.endTime) : 'En curso...'}
-                              </td>
-                              <td className="py-3 px-4 text-sm font-mono text-foreground">
-                                {formatTime(duration)}
-                              </td>
-                            </tr>
+                             <tr key={session.id} className="border-b border-border">
+                               <td className="py-3 px-4 text-sm text-foreground">
+                                 {formatDate(session.startTime)}
+                               </td>
+                               <td className="py-3 px-4 text-sm text-foreground">
+                                 {session.endTime ? formatDate(session.endTime) : 'En curso...'}
+                               </td>
+                               <td className="py-3 px-4 text-sm font-mono text-foreground">
+                                 {formatTime(duration)}
+                               </td>
+                               <td className="py-3 px-4 text-sm text-foreground">
+                                 {session.comment ? (
+                                   <div className="max-w-xs truncate" title={session.comment}>
+                                     {session.comment}
+                                   </div>
+                                 ) : (
+                                   <span className="text-muted-foreground">-</span>
+                                 )}
+                               </td>
+                             </tr>
                           )
                         })}
                       </tbody>
