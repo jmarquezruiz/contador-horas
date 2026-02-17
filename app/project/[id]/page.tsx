@@ -36,6 +36,8 @@ export default function ProjectDetailPage() {
   const [showCommentInput, setShowCommentInput] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [editingSessionId, setEditingSessionId] = useState<number | null>(null)
+  const [editComment, setEditComment] = useState('')
   const router = useRouter()
   const params = useParams()
 
@@ -225,6 +227,47 @@ export default function ProjectDetailPage() {
     router.push('/auth')
   }
 
+  const startEditingComment = (session: TimeSession) => {
+    setEditingSessionId(session.id)
+    setEditComment(session.comment || '')
+  }
+
+  const cancelEditingComment = () => {
+    setEditingSessionId(null)
+    setEditComment('')
+  }
+
+  const saveComment = async (sessionId: number) => {
+    try {
+      const token = localStorage.getItem('token')
+      const projectId = params.id
+
+      const response = await fetch(`/api/projects/${projectId}/sessions`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          sessionId,
+          comment: editComment.trim() || null
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Error al actualizar comentario')
+      }
+
+      setSessions(sessions.map(s => 
+        s.id === sessionId ? { ...s, comment: editComment.trim() || null } : s
+      ))
+      setEditingSessionId(null)
+      setEditComment('')
+    } catch (error) {
+      setError('Error al actualizar comentario')
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -380,15 +423,52 @@ export default function ProjectDetailPage() {
                                <td className="py-3 px-4 text-sm font-mono text-foreground">
                                  {formatTime(duration)}
                                </td>
-                               <td className="py-3 px-4 text-sm text-foreground">
-                                 {session.comment ? (
-                                   <div className="max-w-xs truncate" title={session.comment}>
-                                     {session.comment}
-                                   </div>
-                                 ) : (
-                                   <span className="text-muted-foreground">-</span>
-                                 )}
-                               </td>
+                                <td className="py-3 px-4 text-sm text-foreground">
+                                  {editingSessionId === session.id ? (
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="text"
+                                        value={editComment}
+                                        onChange={(e) => setEditComment(e.target.value)}
+                                        className="flex-1 px-2 py-1 border border-border rounded text-sm bg-background text-foreground"
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') saveComment(session.id)
+                                          if (e.key === 'Escape') cancelEditingComment()
+                                        }}
+                                      />
+                                      <button
+                                        onClick={() => saveComment(session.id)}
+                                        className="text-green-500 hover:text-green-600"
+                                      >
+                                        ✓
+                                      </button>
+                                      <button
+                                        onClick={cancelEditingComment}
+                                        className="text-muted-foreground hover:text-foreground"
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-2">
+                                      {session.comment ? (
+                                        <div className="max-w-xs truncate" title={session.comment}>
+                                          {session.comment}
+                                        </div>
+                                      ) : (
+                                        <span className="text-muted-foreground">-</span>
+                                      )}
+                                      <button
+                                        onClick={() => startEditingComment(session)}
+                                        className="text-muted-foreground hover:text-primary ml-2"
+                                        title="Editar comentario"
+                                      >
+                                        ✏️
+                                      </button>
+                                    </div>
+                                  )}
+                                </td>
                              </tr>
                           )
                         })}

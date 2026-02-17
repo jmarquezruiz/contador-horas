@@ -157,3 +157,68 @@ export async function POST(
     )
   }
 }
+
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = verifyToken(token)
+
+    if (!decoded) {
+      return NextResponse.json({ error: 'Token inválido' }, { status: 401 })
+    }
+
+    const { sessionId, comment } = await request.json()
+    const { id } = await context.params
+    const projectId = parseInt(id)
+
+    const project = await prisma.project.findFirst({
+      where: {
+        id: projectId,
+        userId: decoded.userId
+      }
+    })
+
+    if (!project) {
+      return NextResponse.json(
+        { error: 'Proyecto no encontrado' },
+        { status: 404 }
+      )
+    }
+
+    const session = await prisma.timeSession.findFirst({
+      where: {
+        id: sessionId,
+        projectId,
+        userId: decoded.userId
+      }
+    })
+
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Sesión no encontrada' },
+        { status: 404 }
+      )
+    }
+
+    const updatedSession = await prisma.timeSession.update({
+      where: { id: sessionId },
+      data: { comment: comment || null }
+    })
+
+    return NextResponse.json(updatedSession)
+  } catch (error) {
+    console.error('Update session comment error:', error)
+    return NextResponse.json(
+      { error: 'Error al actualizar comentario' },
+      { status: 500 }
+    )
+  }
+}
